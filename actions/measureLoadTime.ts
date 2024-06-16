@@ -11,7 +11,7 @@ if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
 // 函数：测量页面加载时间
 async function measureLoadTime(url: string, networkConfig: any, useCache: boolean) {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
 
   if (Object.keys(networkConfig).length !== 0) {

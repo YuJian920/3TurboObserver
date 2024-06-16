@@ -45,7 +45,7 @@ const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
 
   if (cacheType === "option") cacheOption.push(...payload.cacheOption);
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
 
   await page.setRequestInterception(true);
