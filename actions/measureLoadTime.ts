@@ -6,7 +6,7 @@ import { cwd } from "node:process";
 import puppeteer from "puppeteer";
 
 // 配置资源缓存目录
-const cacheDir = path.join("/tmp", "cache");
+const cacheDir = path.join(cwd(), "cache");
 if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
 // 函数：测量页面加载时间
