@@ -62,7 +62,7 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
       setPreLoading(true);
       setCacheList([]);
 
-      const result = await preloadCacheAction("https://baidu.com", payload);
+      const result = await preloadCacheAction(URL, payload);
       setCacheList(result);
     } finally {
       setPreLoading(false);
@@ -105,7 +105,7 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
             <SelectGroup>
               {/* <SelectItem value="all">全部缓存</SelectItem> */}
               <SelectItem value="option">预设缓存</SelectItem>
-              <SelectItem value="regx">正则匹配</SelectItem>
+              <SelectItem value="regx" disabled>正则匹配</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
@@ -150,7 +150,7 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
             <TableRow>
               <TableHead>文件名称</TableHead>
               <TableHead>文件类型</TableHead>
-              <TableHead>文件大小</TableHead>
+              <TableHead className="text-right">文件大小</TableHead>
               {/* <TableHead className="text-right">命中缓存</TableHead> */}
             </TableRow>
           </TableHeader>
@@ -159,7 +159,7 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
               <TableRow key={mapItem.index}>
                 <TableCell>{mapItem.fileName}</TableCell>
                 <TableCell>{mapItem.resourceType}</TableCell>
-                <TableCell>{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
+                <TableCell className="text-right">{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
                 {/* <TableCell className="flex justify-end">
                   <CheckCircledIcon />
                 </TableCell> */}

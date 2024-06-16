@@ -35,7 +35,7 @@ async function measureLoadTime(url: string, networkConfig: any, useCache: boolea
             status: 200,
             body: fileContent,
           });
-        }
+        } else request.continue();
       } else {
         request.continue();
       }
