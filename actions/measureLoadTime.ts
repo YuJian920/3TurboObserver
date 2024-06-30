@@ -25,20 +25,12 @@ async function measureLoadTime(url: string, networkConfig: any, useCache: boolea
     page.on("request", async (request) => {
       const url = new URL(request.url());
       const fileName = url.pathname.split("/").pop();
-      const resourceType = request.resourceType();
       const cacheFilePath = path.join(cacheDir, fileName!);
 
-      if (["script", "stylesheet", "image", "font"].includes(resourceType)) {
-        if (fs.existsSync(cacheFilePath)) {
-          const fileContent = fs.readFileSync(cacheFilePath);
-          request.respond({
-            status: 200,
-            body: fileContent,
-          });
-        } else request.continue();
-      } else {
-        request.continue();
-      }
+      if (fs.existsSync(cacheFilePath)) {
+        const fileContent = fs.readFileSync(cacheFilePath);
+        request.respond({ status: 200, body: fileContent });
+      } else request.continue();
     });
   }
 

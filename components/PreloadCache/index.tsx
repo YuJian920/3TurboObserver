@@ -1,15 +1,16 @@
 "use client";
 
-import { CheckCircledIcon, ReloadIcon } from "@radix-ui/react-icons";
-import { Checkbox } from "@/components/ui/checkbox";
+import analyzeCache, { type AnalyzeResponse } from "@/actions/analyzeCache";
+import preloadCacheAction, { deleteCacheAction, getPreloadCacheList, type PreloaResponse } from "@/actions/preloadCache";
+import Timeline from "@/components/Timeline";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Input } from "../ui/input";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectGroup, SelectItem } from "@/components/ui/select";
-import { useState, useEffect, useMemo } from "react";
-import preloadCacheAction, { deleteCacheAction, getPreloadCacheList } from "@/actions/preloadCache";
-import type { CacheType, FileType, CacheFileType, PreloadCachePayload, PreloaResponse } from "@/actions/preloadCache";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ReloadIcon } from "@radix-ui/react-icons";
+import type { ResourceType } from "puppeteer";
+import { useEffect, useMemo, useState } from "react";
+import { Input } from "../ui/input";
 
 interface PreloadCacheProps {
   URL: string;
@@ -17,21 +18,21 @@ interface PreloadCacheProps {
 }
 
 export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
-  const [cacheType, setCacheType] = useState<CacheType>("option");
-  const [cacheOption, setCacheOption] = useState<CacheFileType>(["script", "stylesheet", "image", "font"]);
-  const [cacheRegx, setCacheRegx] = useState("");
+  const [cacheOption, setCacheOption] = useState<ResourceType[]>(["script", "stylesheet", "image", "font"]);
   const [isPreLoading, setPreLoading] = useState(false);
+  const [isAnalyzeLoading, setAnalyzeLoading] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
   const [cacheList, setCacheList] = useState<PreloaResponse[]>([]);
+  const [analyzeList, setAnalyzeList] = useState<AnalyzeResponse[]>([]);
 
-  const preloadOptions = useMemo<{ name: string; key: FileType }[]>(
+  const preloadOptions = useMemo<{ name: string; key: ResourceType }[]>(
     () => [
       {
-        name: "缓存 JavaScript 文件",
+        name: "缓存 JavaScript",
         key: "script",
       },
       {
-        name: "缓存 CSS 文件",
+        name: "缓存 CSS",
         key: "stylesheet",
       },
       {
@@ -56,16 +57,27 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
    * 预加载缓存
    */
   const handlePreloadCache = async () => {
-    const payload: PreloadCachePayload = { cacheType, cacheOption, cacheRegx };
-
     try {
       setPreLoading(true);
       setCacheList([]);
 
-      const result = await preloadCacheAction(URL, payload);
+      const result = await preloadCacheAction(URL, { cacheOption });
       setCacheList(result);
     } finally {
       setPreLoading(false);
+    }
+  };
+
+  const handleAnalyzeloadCache = async () => {
+    try {
+      setAnalyzeLoading(true);
+      setCacheList([]);
+
+      const result = await analyzeCache(URL, { cacheOption });
+      console.log("result", result);
+      setAnalyzeList(result);
+    } finally {
+      setAnalyzeLoading(false);
     }
   };
 
@@ -87,7 +99,7 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
    * @param value
    * @param key
    */
-  const handleCacheOptionChange = (value: boolean, key: FileType) => {
+  const handleCacheOptionChange = (value: boolean, key: ResourceType) => {
     if (value) setCacheOption([...cacheOption, key]);
     else setCacheOption(cacheOption.filter((item) => item !== key));
   };
@@ -97,46 +109,31 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
       <h1 className="text-4xl font-bold">Preload Cache 控制</h1>
       <div className="flex items-center gap-5">
         <Input value={URL} onInput={(event) => setURL(event.currentTarget.value)} className="w-96" placeholder="输入目标 URL" />
-        <Select value={cacheType} onValueChange={(value: CacheType) => setCacheType(value)}>
-          <SelectTrigger className="w-[120px]">
-            <SelectValue placeholder="缓存行为" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {/* <SelectItem value="all">全部缓存</SelectItem> */}
-              <SelectItem value="option">预设缓存</SelectItem>
-              <SelectItem value="regx" disabled>正则匹配</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        {cacheType === "option" && (
-          <div className="flex items-center gap-6">
-            {preloadOptions.map((mapItem) => {
-              return (
-                <div key={mapItem.key} className="flex items-center gap-2">
-                  <Checkbox
-                    checked={cacheOption.includes(mapItem.key)}
-                    onCheckedChange={(value: boolean) => {
-                      handleCacheOptionChange(value, mapItem.key);
-                    }}
-                  />
-                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    {mapItem.name}
-                  </label>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {cacheType === "regx" && (
-          <div className="flex items-center gap-6">
-            <Input value={cacheRegx} onInput={(event) => setCacheRegx(event.currentTarget.value)} placeholder="输入正则表达式" />
-          </div>
-        )}
+        <div className="flex items-center gap-6">
+          {preloadOptions.map((mapItem) => {
+            return (
+              <div key={mapItem.key} className="flex items-center gap-2">
+                <Checkbox
+                  checked={cacheOption.includes(mapItem.key)}
+                  onCheckedChange={(value: boolean) => {
+                    handleCacheOptionChange(value, mapItem.key);
+                  }}
+                />
+                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  {mapItem.name}
+                </label>
+              </div>
+            );
+          })}
+        </div>
         <div className="flex gap-4">
           <Button onClick={handlePreloadCache} disabled={isPreLoading}>
             {isPreLoading && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
             Preload Cache
+          </Button>
+          <Button onClick={handleAnalyzeloadCache} disabled={isAnalyzeLoading}>
+            {isAnalyzeLoading && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
+            Analyze Cache
           </Button>
           <Button onClick={handleDeleteCache} variant="destructive" disabled={isDeleting}>
             {isDeleting && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
@@ -144,14 +141,15 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
           </Button>
         </div>
       </div>
-      <ScrollArea data-hasvalue={cacheList.length !== 0} className="data-[hasvalue=false]:h-14 h-80 w-full">
+      <Timeline data={analyzeList} />
+      {/* <NivoTimeline data={analyzeList} /> */}
+      {/* <ScrollArea data-hasvalue={cacheList.length !== 0} className="data-[hasvalue=false]:h-14 h-80 w-full">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>文件名称</TableHead>
               <TableHead>文件类型</TableHead>
               <TableHead className="text-right">文件大小</TableHead>
-              {/* <TableHead className="text-right">命中缓存</TableHead> */}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -160,14 +158,11 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
                 <TableCell>{mapItem.fileName}</TableCell>
                 <TableCell>{mapItem.resourceType}</TableCell>
                 <TableCell className="text-right">{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
-                {/* <TableCell className="flex justify-end">
-                  <CheckCircledIcon />
-                </TableCell> */}
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </ScrollArea>
+      </ScrollArea> */}
     </div>
   );
 }
