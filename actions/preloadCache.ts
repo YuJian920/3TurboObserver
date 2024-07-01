@@ -1,5 +1,6 @@
 "use server";
 
+import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
@@ -33,6 +34,7 @@ const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
   const responsePayload: PreloaResponse[] = [];
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
+  page.setUserAgent(UserAgent);
 
   await page.setRequestInterception(true);
 

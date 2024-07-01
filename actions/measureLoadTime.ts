@@ -1,5 +1,6 @@
 "use server";
 
+import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
@@ -13,6 +14,7 @@ if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 async function measureLoadTime(url: string, networkConfig: any, useCache: boolean) {
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
+  page.setUserAgent(UserAgent);
 
   if (Object.keys(networkConfig).length !== 0) {
     const client = await page.target().createCDPSession();

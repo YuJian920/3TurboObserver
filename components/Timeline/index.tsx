@@ -39,7 +39,7 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
 
   // 归一化时间轴
   const minStartTime = Math.min(...data.map((item) => item.startTime));
-  const maxEndTime = Math.max(...data.map((item) => item.endTime));
+  const maxEndTime = Math.max(...data.map((item) => item.endTime || 0));
   const totalDuration = maxEndTime - minStartTime;
 
   /**

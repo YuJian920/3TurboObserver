@@ -1,5 +1,6 @@
 "use server";
 
+import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
@@ -16,6 +17,7 @@ export interface AnalyzeResponse {
   responseTiming: Record<string, number>;
   endTime: number;
   duration: number;
+  size: number;
 }
 
 interface AnalyzeCacheProps {
@@ -32,6 +34,7 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
 
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
+  page.setUserAgent(UserAgent);
 
   // await page.setRequestInterception(true);
   const networkRequests = new Map();
@@ -49,8 +52,10 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
     const responseTiming = response.timing();
 
     if (request) {
-      request.responseReceived = performance.now();
+      const buffer = await response.buffer();
+      request.size = buffer.length; // 添加资源大小
       request.responseTiming = responseTiming;
+      request.responseReceived = performance.now();
     }
   });
 
