@@ -48,7 +48,7 @@ const RechartsTimeline = ({ data }: RechartsTimelineChartProps) => {
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
       const resource = payload[0].payload;
-      const { responseTiming } = resource;
+      const { responseTiming = {} } = resource;
       return (
         <div className="bg-white border border-gray-300 p-2 rounded shadow-lg text-sm">
           <p>
@@ -58,16 +58,16 @@ const RechartsTimeline = ({ data }: RechartsTimelineChartProps) => {
             <strong>URL:</strong> <span className="break-all">{resource.url}</span>
           </p>
           <p>
-            <strong>Start Time:</strong> {formatTime(resource.startTime)}
+            <strong>Start Time:</strong> {formatTime(safeTimeDiff(0, resource.startTime))}
           </p>
           <p>
-            <strong>End Time:</strong> {formatTime(resource.endTime)}
+            <strong>End Time:</strong> {formatTime(safeTimeDiff(0, resource.endTime))}
           </p>
           <p>
-            <strong>Duration:</strong> {formatTime(resource.duration)}
+            <strong>Duration:</strong> {formatTime(safeTimeDiff(0, resource.duration))}
           </p>
           <p>
-            <strong>Response Received:</strong> {formatTime(resource.responseReceived)}
+            <strong>Response Received:</strong> {formatTime(safeTimeDiff(0, resource.responseReceived))}
           </p>
           <p>
             <strong>DNS Lookup:</strong> {formatTime(safeTimeDiff(responseTiming.dnsEnd, responseTiming.dnsStart))}
@@ -108,7 +108,7 @@ const RechartsTimeline = ({ data }: RechartsTimelineChartProps) => {
           <XAxis
             type="number"
             domain={[0, totalDuration]}
-            tickFormatter={(value) => formatTime(value + minStartTime)}
+            tickFormatter={(value) => formatTimeToSecond(value + minStartTime)}
             ticks={xAxisTicks}
             interval={0} // Force all ticks to be rendered
           />
@@ -116,12 +116,12 @@ const RechartsTimeline = ({ data }: RechartsTimelineChartProps) => {
           <Tooltip content={<CustomTooltip />} />
           <Bar
             dataKey="normalizedEndTime"
-            fill="#3b82f6"
+            style={{ fill: "hsl(var(--foreground))", opacity: 0.9 }}
             shape={(props) => {
               const { x, y, width, height, normalizedStartTime, normalizedEndTime } = props;
               const barWidth = ((normalizedEndTime - normalizedStartTime) / totalDuration) * width;
               const barX = x + (normalizedStartTime / totalDuration) * width;
-              return <rect x={barX} y={y} width={barWidth} height={height} fill="#3b82f6" />;
+              return <rect x={barX} y={y} width={barWidth} height={height} />;
             }}
           />
         </BarChart>

@@ -10,6 +10,7 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [hoveredResource, setHoveredResource] = useState<AnalyzeResponse | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
   const barHeight = 30;
   const margin = { top: 20, right: 30, bottom: 30, left: 50 };
   const tooltipWidth = 300;
@@ -23,9 +24,7 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
       }
     });
 
-    if (svgRef.current) {
-      resizeObserver.observe(svgRef.current);
-    }
+    if (svgRef.current) resizeObserver.observe(svgRef.current);
 
     return () => resizeObserver.disconnect();
   }, []);
@@ -38,40 +37,89 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
     );
   }
 
+  // 归一化时间轴
   const minStartTime = Math.min(...data.map((item) => item.startTime));
   const maxEndTime = Math.max(...data.map((item) => item.endTime));
   const totalDuration = maxEndTime - minStartTime;
 
+  /**
+   * 归一化时间轴
+   * @param time
+   * @returns
+   */
   const normalizeTime = (time: number) => (time - minStartTime) / totalDuration;
 
+  /**
+   * 获取X轴坐标
+   * @param time
+   * @returns
+   */
   const getX = (time: number) => normalizeTime(time) * (dimensions.width - margin.left - margin.right) + margin.left;
 
   const chartHeight = Math.max(data.length * (barHeight + 10) + margin.top + margin.bottom, dimensions.height);
 
+  /**
+   * 格式化时间
+   * @param time
+   * @returns
+   */
   const formatTime = (time: number) => `${time.toFixed(2)}ms`;
 
+  /**
+   * 格式化时间为秒
+   * @param time
+   * @returns
+   */
+  const formatTimeToSecond = (time: number) => `${(time / 1000).toFixed(2)}s`;
+
+  /**
+   * 安全时间差
+   * @param end
+   * @param start
+   * @returns
+   */
   const safeTimeDiff = (end: any, start: any) => {
-    if (typeof end === "number" && typeof start === "number" && end >= start) {
+    if (typeof end === "number" && typeof start === "number") {
       return end - start;
     }
+    if (typeof end === "string" && typeof start === "string") {
+      return Number(end) - Number(start);
+    }
+
     return 0;
   };
 
+  /**
+   * 鼠标进入事件
+   * @param event
+   * @param resource
+   */
   const handleMouseEnter = (event: React.MouseEvent<SVGGElement, MouseEvent>, resource: AnalyzeResponse) => {
     setHoveredResource(resource);
     updateTooltipPosition(event);
   };
 
+  /**
+   * 鼠标离开事件
+   */
   const handleMouseLeave = () => {
     setHoveredResource(null);
   };
 
+  /**
+   * 鼠标移动事件
+   * @param event
+   */
   const handleMouseMove = (event: React.MouseEvent<SVGGElement, MouseEvent>) => {
     if (hoveredResource) {
       updateTooltipPosition(event);
     }
   };
 
+  /**
+   * 更新提示框位置
+   * @param event
+   */
   const updateTooltipPosition = (event: React.MouseEvent<SVGGElement, MouseEvent>) => {
     if (svgRef.current) {
       const svgRect = svgRef.current.getBoundingClientRect();
@@ -141,11 +189,13 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
               y="0"
               width={getX(item.endTime) - getX(item.startTime)}
               height={barHeight}
-              fill="#3b82f6"
+              style={{ fill: "hsl(var(--foreground))", opacity: 0.9 }}
+              rx="5"
+              ry="5"
               opacity={0.8}
             />
             <text x={getX(item.endTime) + 5} y={barHeight / 2} dy=".35em" className="text-sm">
-              {formatTime(item.duration)}
+              {formatTime(safeTimeDiff(item.duration, 0))}
             </text>
           </g>
         ))}
@@ -161,7 +211,7 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
           <g key={tick} transform={`translate(${getX(minStartTime + tick)}, ${chartHeight - margin.bottom})`}>
             <line y2="5" stroke="black" />
             <text y="20" textAnchor="middle" className="text-sm">
-              {formatTime(tick)}
+              {formatTimeToSecond(safeTimeDiff(tick, 0))}
             </text>
           </g>
         ))}
@@ -177,42 +227,43 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
             overflowY: "auto",
           }}
         >
-          <p>
+          <div>
             <strong>URL:</strong> <span className="break-all">{hoveredResource.url}</span>
+          </div>
+          <p>
+            <strong>Start Time:</strong> {formatTime(safeTimeDiff(hoveredResource.startTime - minStartTime, 0))}
           </p>
           <p>
-            <strong>Start Time:</strong> {formatTime(hoveredResource.startTime - minStartTime)}
+            <strong>End Time:</strong> {formatTime(safeTimeDiff(hoveredResource.endTime - minStartTime, 0))}
           </p>
           <p>
-            <strong>End Time:</strong> {formatTime(hoveredResource.endTime - minStartTime)}
+            <strong>Duration:</strong> {formatTime(safeTimeDiff(hoveredResource.duration, 0))}
           </p>
           <p>
-            <strong>Duration:</strong> {formatTime(hoveredResource.duration)}
+            <strong>Response Received:</strong> {formatTime(safeTimeDiff(hoveredResource.responseReceived - minStartTime, 0))}
           </p>
           <p>
-            <strong>Response Received:</strong> {formatTime(hoveredResource.responseReceived - minStartTime)}
+            <strong>DNS Lookup:</strong>
+            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.dnsEnd, hoveredResource.responseTiming?.dnsStart))}
           </p>
           <p>
-            <strong>DNS Lookup:</strong>{" "}
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming.dnsEnd, hoveredResource.responseTiming.dnsStart))}
+            <strong>Initial Connection:</strong>
+            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.connectEnd, hoveredResource.responseTiming?.connectStart))}
           </p>
           <p>
-            <strong>Initial Connection:</strong>{" "}
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming.connectEnd, hoveredResource.responseTiming.connectStart))}
+            <strong>SSL:</strong>{" "}
+            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.sslEnd, hoveredResource.responseTiming?.sslStart))}
           </p>
           <p>
-            <strong>SSL:</strong> {formatTime(safeTimeDiff(hoveredResource.responseTiming.sslEnd, hoveredResource.responseTiming.sslStart))}
+            <strong>Request Sent:</strong>
+            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.sendEnd, hoveredResource.responseTiming?.sendStart))}
           </p>
           <p>
-            <strong>Request Sent:</strong>{" "}
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming.sendEnd, hoveredResource.responseTiming.sendStart))}
+            <strong>Waiting (TTFB):</strong>
+            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.receiveHeadersEnd, hoveredResource.responseTiming?.sendEnd))}
           </p>
           <p>
-            <strong>Waiting (TTFB):</strong>{" "}
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming.receiveHeadersEnd, hoveredResource.responseTiming.sendEnd))}
-          </p>
-          <p>
-            <strong>Content Download:</strong> {formatTime(hoveredResource.endTime - hoveredResource.responseReceived)}
+            <strong>Content Download:</strong> {formatTime(safeTimeDiff(0, hoveredResource.endTime - hoveredResource.responseReceived))}
           </p>
         </div>
       )}

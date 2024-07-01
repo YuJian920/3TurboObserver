@@ -30,7 +30,7 @@ interface AnalyzeCacheProps {
 const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   if (!url) return [];
 
-  const browser = await puppeteer.launch({ headless: false, args: ["--no-sandbox"] });
+  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
 
   // await page.setRequestInterception(true);
@@ -64,8 +64,6 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   });
 
   await page.goto(url, { waitUntil: "networkidle2" });
-  // requestDetails 转对象数组
-  // const requestDetailsArray = Array.from(networkRequests.values());
   const earliestStartTime = Math.min(...Array.from(networkRequests.values()).map((req) => req.startTime));
 
   const requestDetailsArray = Array.from(networkRequests.values()).map((req) => {

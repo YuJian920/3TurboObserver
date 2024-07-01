@@ -18,13 +18,13 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col p-24 gap-14">
-      <PreloadCache URL={URL} setURL={setURL} />
       <Network
         control={networkControl}
         setControl={setNetworkControl}
         config={networkConfig}
         setConfig={setNetworkConfig as SetConfigType}
       />
+      <PreloadCache URL={URL} setURL={setURL} networkControl={networkControl} networkConfig={networkConfig} />
       <Iterations URL={URL} networkControl={networkControl} networkConfig={networkConfig} />
     </main>
   );

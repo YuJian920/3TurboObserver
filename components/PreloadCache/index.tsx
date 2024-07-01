@@ -5,19 +5,24 @@ import preloadCacheAction, { deleteCacheAction, getPreloadCacheList, type Preloa
 import Timeline from "@/components/Timeline";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ReloadIcon } from "@radix-ui/react-icons";
+import { BarChartIcon, PieChartIcon, ReloadIcon } from "@radix-ui/react-icons";
 import type { ResourceType } from "puppeteer";
 import { useEffect, useMemo, useState } from "react";
-import { Input } from "../ui/input";
+
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import type { NetworkConfig } from "../Network";
 
 interface PreloadCacheProps {
   URL: string;
   setURL: (value: string) => void;
+  networkControl: boolean;
+  networkConfig: NetworkConfig;
 }
 
-export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
+export default function PreloadCache({ URL, setURL, networkControl, networkConfig }: PreloadCacheProps) {
   const [cacheOption, setCacheOption] = useState<ResourceType[]>(["script", "stylesheet", "image", "font"]);
   const [isPreLoading, setPreLoading] = useState(false);
   const [isAnalyzeLoading, setAnalyzeLoading] = useState(false);
@@ -127,10 +132,6 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
           })}
         </div>
         <div className="flex gap-4">
-          <Button onClick={handlePreloadCache} disabled={isPreLoading}>
-            {isPreLoading && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
-            Preload Cache
-          </Button>
           <Button onClick={handleAnalyzeloadCache} disabled={isAnalyzeLoading}>
             {isAnalyzeLoading && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
             Analyze Cache
@@ -141,28 +142,59 @@ export default function PreloadCache({ URL, setURL }: PreloadCacheProps) {
           </Button>
         </div>
       </div>
-      <Timeline data={analyzeList} />
-      {/* <NivoTimeline data={analyzeList} /> */}
-      {/* <ScrollArea data-hasvalue={cacheList.length !== 0} className="data-[hasvalue=false]:h-14 h-80 w-full">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>文件名称</TableHead>
-              <TableHead>文件类型</TableHead>
-              <TableHead className="text-right">文件大小</TableHead>
+      <div className="flex gap-4">
+        <Drawer>
+          <DrawerTrigger asChild>
+            <Button className="w-20 h-20" variant="outline">
+              <BarChartIcon width="3rem" height="3rem" />
+            </Button>
+          </DrawerTrigger>
+          <DrawerContent>
+            <DrawerHeader>
+              <div className="flex justify-between">
+                <div>
+                  <DrawerTitle>Resource Download Timeline</DrawerTitle>
+                  <DrawerDescription>选择需要缓存的静态资源后点击 Preload Cache 按钮即可开始缓存</DrawerDescription>
+                </div>
+                <div className="flex gap-4">
+                  <Button onClick={handlePreloadCache} disabled={isPreLoading}>
+                    {isPreLoading && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
+                    Preload Cache
+                  </Button>
+                  <Button onClick={handleDeleteCache} variant="destructive" disabled={isDeleting}>
+                    {isDeleting && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
+                    删除缓存
+                  </Button>
+                </div>
+              </div>
+            </DrawerHeader>
+            <ScrollArea className="h-[90vh] w-full">
+              <Timeline data={analyzeList} />
+            </ScrollArea>
+          </DrawerContent>
+        </Drawer>
+        <Button className="w-20 h-20" variant="outline">
+          <PieChartIcon width="3rem" height="3rem" />
+        </Button>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>文件名称</TableHead>
+            <TableHead>文件类型</TableHead>
+            <TableHead className="text-right">文件大小</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {cacheList.map((mapItem) => (
+            <TableRow key={mapItem.index}>
+              <TableCell>{mapItem.fileName}</TableCell>
+              <TableCell>{mapItem.resourceType}</TableCell>
+              <TableCell className="text-right">{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {cacheList.map((mapItem) => (
-              <TableRow key={mapItem.index}>
-                <TableCell>{mapItem.fileName}</TableCell>
-                <TableCell>{mapItem.resourceType}</TableCell>
-                <TableCell className="text-right">{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </ScrollArea> */}
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 }
