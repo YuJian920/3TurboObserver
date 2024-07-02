@@ -1,7 +1,7 @@
 "use client";
 
 import analyzeCache, { type AnalyzeResponse } from "@/actions/analyzeCache";
-import preloadCacheAction, { deleteCacheAction, getPreloadCacheList, type PreloaResponse } from "@/actions/preloadCache";
+import preloadCacheAction, { type PreloaResponseV2, deleteCacheAction } from "@/actions/preloadCache";
 import Timeline from "@/components/Timeline";
 import TreeMap from "@/components/TreeMap";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,9 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, Dr
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChartIcon, PieChartIcon, ReloadIcon } from "@radix-ui/react-icons";
+import { BarChartIcon, PieChartIcon, ReloadIcon, CheckCircledIcon, QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import type { ResourceType } from "puppeteer";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { NetworkConfig } from "../Network";
 
 interface PreloadCacheProps {
@@ -27,7 +27,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
   const [isPreLoading, setPreLoading] = useState(false);
   const [isAnalyzeLoading, setAnalyzeLoading] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
-  const [cacheList, setCacheList] = useState<AnalyzeResponse[]>([]);
+  const [cacheList, setCacheList] = useState<PreloaResponseV2[]>([]);
   const [analyzeList, setAnalyzeList] = useState<AnalyzeResponse[]>([]);
 
   const preloadOptions = useMemo<{ name: string; key: ResourceType }[]>(
@@ -52,12 +52,6 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
     []
   );
 
-  useEffect(() => {
-    getPreloadCacheList().then((list) => {
-      setCacheList(list);
-    });
-  }, []);
-
   const addPreloadCache = async (fileData: AnalyzeResponse) => {
     const index = cacheList.findIndex((item) => item.url === fileData.url);
     if (index !== -1) {
@@ -67,7 +61,10 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
         return next;
       });
     } else {
-      setCacheList((prev) => [...prev, fileData]);
+      setCacheList((prev) => [
+        ...prev,
+        { url: fileData.url, fileName: fileData.url.split("/").pop() || "", size: fileData.size, duration: fileData.duration },
+      ]);
     }
   };
 
@@ -77,20 +74,27 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
   const handlePreloadCache = async () => {
     try {
       setPreLoading(true);
-      setCacheList([]);
+      const result = await preloadCacheAction(URL, { networkConfig: networkControl ? networkConfig : undefined, resourceList: cacheList });
 
-      const result = await preloadCacheAction(URL, { cacheOption, networkConfig: networkControl ? networkConfig : undefined });
-      setCacheList(result);
+      // 将 result 和 cacheList 进行对比，缓存成功则在 cacheList 对应的项中添加 isCached 标记
+      setCacheList((prev) =>
+        prev.map((item) => {
+          const index = result.findIndex((resultItem) => resultItem.url === item.url);
+          if (index !== -1) return { ...item, isCached: true };
+          return item;
+        })
+      );
     } finally {
       setPreLoading(false);
     }
   };
 
+  /**
+   * 分析缓存
+   */
   const handleAnalyzeloadCache = async () => {
     try {
       setAnalyzeLoading(true);
-      setCacheList([]);
-
       const result = await analyzeCache(URL, { cacheOption, networkConfig: networkControl ? networkConfig : undefined });
       setAnalyzeList(result);
     } finally {
@@ -222,16 +226,20 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
             <TableHeader>
               <TableRow>
                 <TableHead>文件名称</TableHead>
-                {/* <TableHead>文件类型</TableHead> */}
-                <TableHead className="text-right">文件大小</TableHead>
+                <TableHead>请求时长</TableHead>
+                <TableHead>文件大小</TableHead>
+                <TableHead className="text-right">已缓存</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {cacheList.map((mapItem) => (
                 <TableRow key={mapItem.url}>
                   <TableCell>{mapItem.url.split("/").pop()}</TableCell>
-                  {/* <TableCell>{mapItem.duration}</TableCell> */}
-                  <TableCell className="text-right">{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
+                  <TableCell>{mapItem.duration?.toFixed(2) || 0} ms</TableCell>
+                  <TableCell>{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
+                  <TableCell className="flex justify-end">
+                    <div>{mapItem.isCached ? <CheckCircledIcon /> : <QuestionMarkCircledIcon />}</div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

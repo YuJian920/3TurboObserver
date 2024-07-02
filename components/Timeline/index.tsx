@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState } from "react";
 import type { AnalyzeResponse } from "@/actions/analyzeCache";
+import type { PreloaResponseV2 } from "@/actions/preloadCache";
 
 interface TimelineChartProps {
   data: AnalyzeResponse[];
   handleClick: (fileData: AnalyzeResponse) => void;
-  selected: AnalyzeResponse[] | null;
+  selected: PreloaResponseV2[] | null;
 }
 
 const TimelineChart = ({ data, handleClick, selected }: TimelineChartProps) => {
@@ -186,7 +187,7 @@ const TimelineChart = ({ data, handleClick, selected }: TimelineChartProps) => {
               height={barHeight}
               fill="#f3f4f6"
               // opacity={hoveredResource === item ? 0.5 : 0}
-              opacity={selected?.includes(item) ? 0.5 : hoveredResource === item ? 0.5 : 0}
+              opacity={selected?.some((someItem) => someItem.url === item.url) ? 0.5 : hoveredResource === item ? 0.5 : 0}
             />
             <rect
               x={getX(item.startTime)}

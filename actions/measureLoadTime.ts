@@ -29,6 +29,11 @@ async function measureLoadTime(url: string, networkConfig: any, useCache: boolea
       const fileName = url.pathname.split("/").pop();
       const cacheFilePath = path.join(cacheDir, fileName!);
 
+      if (!fileName) {
+        request.continue();
+        return;
+      }
+
       if (fs.existsSync(cacheFilePath)) {
         const fileContent = fs.readFileSync(cacheFilePath);
         request.respond({ status: 200, body: fileContent });
