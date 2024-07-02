@@ -1,10 +1,11 @@
 "use server";
 
+import { NetworkConfig } from "@/components/Network";
 import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
-import puppeteer, { type ResourceType } from "puppeteer";
+import puppeteer, { type Protocol, type ResourceType } from "puppeteer";
 
 // 配置资源缓存目录
 const cacheDir = path.join(cwd(), "cache");
@@ -18,7 +19,7 @@ export interface PreloaResponse {
 }
 
 interface PreloadCacheProps {
-  (url: string, payload: { cacheOption: ResourceType[] }): Promise<PreloaResponse[]>;
+  (url: string, payload: { cacheOption: ResourceType[]; networkConfig?: NetworkConfig }): Promise<PreloaResponse[]>;
 }
 
 /**
@@ -28,6 +29,7 @@ interface PreloadCacheProps {
  */
 const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
   if (!url) return [];
+  const { cacheOption, networkConfig = {} } = payload;
 
   await deleteCacheAction();
 
@@ -35,6 +37,11 @@ const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
   page.setUserAgent(UserAgent);
+
+  if (Object.keys(networkConfig).length !== 0) {
+    const client = await page.target().createCDPSession();
+    await client.send("Network.emulateNetworkConditions", networkConfig as Protocol.Network.EmulateNetworkConditionsRequest);
+  }
 
   await page.setRequestInterception(true);
 
@@ -51,7 +58,7 @@ const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
     const resourceType = request.resourceType();
     const cacheFilePath = path.join(cacheDir, fileName);
 
-    if (payload.cacheOption.includes(resourceType)) {
+    if (cacheOption.includes(resourceType)) {
       const response = await fetch(request.url());
       const buffer = Buffer.from(await response.arrayBuffer());
       fs.writeFileSync(cacheFilePath, buffer);

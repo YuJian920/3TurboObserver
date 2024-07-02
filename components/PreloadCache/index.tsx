@@ -27,7 +27,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
   const [isPreLoading, setPreLoading] = useState(false);
   const [isAnalyzeLoading, setAnalyzeLoading] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
-  const [cacheList, setCacheList] = useState<PreloaResponse[]>([]);
+  const [cacheList, setCacheList] = useState<AnalyzeResponse[]>([]);
   const [analyzeList, setAnalyzeList] = useState<AnalyzeResponse[]>([]);
 
   const preloadOptions = useMemo<{ name: string; key: ResourceType }[]>(
@@ -58,6 +58,19 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
     });
   }, []);
 
+  const addPreloadCache = async (fileData: AnalyzeResponse) => {
+    const index = cacheList.findIndex((item) => item.url === fileData.url);
+    if (index !== -1) {
+      setCacheList((prev) => {
+        const next = [...prev];
+        next.splice(index, 1);
+        return next;
+      });
+    } else {
+      setCacheList((prev) => [...prev, fileData]);
+    }
+  };
+
   /**
    * 预加载缓存
    */
@@ -66,7 +79,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
       setPreLoading(true);
       setCacheList([]);
 
-      const result = await preloadCacheAction(URL, { cacheOption });
+      const result = await preloadCacheAction(URL, { cacheOption, networkConfig: networkControl ? networkConfig : undefined });
       setCacheList(result);
     } finally {
       setPreLoading(false);
@@ -78,8 +91,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
       setAnalyzeLoading(true);
       setCacheList([]);
 
-      const result = await analyzeCache(URL, { cacheOption });
-      console.log("result", result);
+      const result = await analyzeCache(URL, { cacheOption, networkConfig: networkControl ? networkConfig : undefined });
       setAnalyzeList(result);
     } finally {
       setAnalyzeLoading(false);
@@ -171,7 +183,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
                   </div>
                 </DrawerHeader>
                 <ScrollArea className="h-[80vh] w-full">
-                  <Timeline data={analyzeList} />
+                  <Timeline data={analyzeList} handleClick={addPreloadCache} selected={cacheList} />
                 </ScrollArea>
               </DrawerContent>
             </Drawer>
@@ -210,15 +222,15 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
             <TableHeader>
               <TableRow>
                 <TableHead>文件名称</TableHead>
-                <TableHead>文件类型</TableHead>
+                {/* <TableHead>文件类型</TableHead> */}
                 <TableHead className="text-right">文件大小</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {cacheList.map((mapItem) => (
-                <TableRow key={mapItem.index}>
-                  <TableCell>{mapItem.fileName}</TableCell>
-                  <TableCell>{mapItem.resourceType}</TableCell>
+                <TableRow key={mapItem.url}>
+                  <TableCell>{mapItem.url.split("/").pop()}</TableCell>
+                  {/* <TableCell>{mapItem.duration}</TableCell> */}
                   <TableCell className="text-right">{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
                 </TableRow>
               ))}

@@ -3,9 +3,11 @@ import type { AnalyzeResponse } from "@/actions/analyzeCache";
 
 interface TimelineChartProps {
   data: AnalyzeResponse[];
+  handleClick: (fileData: AnalyzeResponse) => void;
+  selected: AnalyzeResponse[] | null;
 }
 
-const TimelineChart = ({ data }: TimelineChartProps) => {
+const TimelineChart = ({ data, handleClick, selected }: TimelineChartProps) => {
   const svgRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [hoveredResource, setHoveredResource] = useState<AnalyzeResponse | null>(null);
@@ -175,6 +177,7 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
             onMouseEnter={(e) => handleMouseEnter(e, item)}
             onMouseLeave={handleMouseLeave}
             onMouseMove={handleMouseMove}
+            onClick={() => handleClick(item)}
           >
             <rect
               x={margin.left}
@@ -182,7 +185,8 @@ const TimelineChart = ({ data }: TimelineChartProps) => {
               width={dimensions.width - margin.left - margin.right}
               height={barHeight}
               fill="#f3f4f6"
-              opacity={hoveredResource === item ? 0.5 : 0}
+              // opacity={hoveredResource === item ? 0.5 : 0}
+              opacity={selected?.includes(item) ? 0.5 : hoveredResource === item ? 0.5 : 0}
             />
             <rect
               x={getX(item.startTime)}

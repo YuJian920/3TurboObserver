@@ -1,10 +1,11 @@
 "use server";
 
+import { NetworkConfig } from "@/components/Network";
 import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
-import puppeteer, { type ResourceType } from "puppeteer";
+import puppeteer, { Protocol, type ResourceType } from "puppeteer";
 
 // 配置资源缓存目录
 const cacheDir = path.join(cwd(), "cache");
@@ -21,7 +22,7 @@ export interface AnalyzeResponse {
 }
 
 interface AnalyzeCacheProps {
-  (url: string, payload: { cacheOption: ResourceType[] }): Promise<AnalyzeResponse[]>;
+  (url: string, payload: { cacheOption: ResourceType[]; networkConfig?: NetworkConfig }): Promise<AnalyzeResponse[]>;
 }
 
 /**
@@ -31,10 +32,16 @@ interface AnalyzeCacheProps {
  */
 const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   if (!url) return [];
+  const { cacheOption, networkConfig = {} } = payload;
 
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
   page.setUserAgent(UserAgent);
+
+  if (Object.keys(networkConfig).length !== 0) {
+    const client = await page.target().createCDPSession();
+    await client.send("Network.emulateNetworkConditions", networkConfig as Protocol.Network.EmulateNetworkConditionsRequest);
+  }
 
   // await page.setRequestInterception(true);
   const networkRequests = new Map();
@@ -42,7 +49,7 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   page.on("request", async (request) => {
     const resourceType = request.resourceType();
 
-    if (payload.cacheOption.includes(resourceType)) {
+    if (cacheOption.includes(resourceType)) {
       networkRequests.set(request.url(), { url: request.url(), startTime: performance.now() });
     } else request.continue();
   });

@@ -8,7 +8,7 @@ import { useState } from "react";
 
 export default function Home() {
   const [URL, setURL] = useState("https://baidu.com");
-  const [networkControl, setNetworkControl] = useState(true);
+  const [networkControl, setNetworkControl] = useState(false);
   const [networkConfig, setNetworkConfig] = useState<NetworkConfig>({
     offline: false,
     downloadThroughput: (500 * 1024) / 8,

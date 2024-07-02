@@ -1,7 +1,9 @@
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { sumThroughput } from "@/lib/utils";
+import { InfoCircledIcon } from "@radix-ui/react-icons";
 
 export interface NetworkConfig {
   offline: boolean;
@@ -36,7 +38,19 @@ export default function Network({ control, setControl, config, setConfig }: Netw
       <h1 className="text-4xl font-bold">Network 控制</h1>
       <div className="flex items-center gap-8">
         <div className="flex items-center gap-2">
-          <Label>网络限制</Label>
+          <div className="flex items-center gap-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <InfoCircledIcon />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>Network 会控制全局的网络配置</span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Label>网络限制</Label>
+          </div>
           <Switch checked={control} onCheckedChange={(value) => setControl(value)} />
         </div>
         {control && (
