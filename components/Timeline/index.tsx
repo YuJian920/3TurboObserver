@@ -187,7 +187,7 @@ const TimelineChart = ({ data, handleClick, selected }: TimelineChartProps) => {
               height={barHeight}
               fill="#f3f4f6"
               // opacity={hoveredResource === item ? 0.5 : 0}
-              opacity={selected?.some((someItem) => someItem.url === item.url) ? 0.5 : hoveredResource === item ? 0.5 : 0}
+              opacity={selected?.some((someItem) => someItem.url === item.url) ? 0.9 : hoveredResource === item ? 0.5 : 0}
             />
             <rect
               x={getX(item.startTime)}

@@ -10,7 +10,14 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, Dr
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChartIcon, PieChartIcon, ReloadIcon, CheckCircledIcon, QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import {
+  BarChartIcon,
+  PieChartIcon,
+  ReloadIcon,
+  CheckCircledIcon,
+  QuestionMarkCircledIcon,
+  TransformIcon,
+} from "@radix-ui/react-icons";
 import type { ResourceType } from "puppeteer";
 import { useMemo, useState } from "react";
 import type { NetworkConfig } from "../Network";
@@ -125,6 +132,19 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
     else setCacheOption(cacheOption.filter((item) => item !== key));
   };
 
+  /**
+   * 全选
+   */
+  const handleAllSelect = () => {
+    if (cacheList.length === analyzeList.length) {
+      setCacheList([]);
+    } else {
+      setCacheList(
+        analyzeList.map((item) => ({ url: item.url, fileName: item.url.split("/").pop() || "", size: item.size, duration: item.duration }))
+      );
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-4xl font-bold">Preload Cache 控制</h1>
@@ -175,12 +195,15 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
                       <DrawerDescription>选择需要缓存的静态资源后点击 Preload Cache 按钮即可开始缓存</DrawerDescription>
                     </div>
                     <div className="flex gap-4">
-                      <Button onClick={handlePreloadCache} disabled={isPreLoading}>
-                        {isPreLoading && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
+                      <Button onClick={handleAllSelect} variant="ghost">
+                        <TransformIcon className="h-4 w-4" />
+                      </Button>
+                      <Button onClick={handlePreloadCache} disabled={isPreLoading} className="gap-2">
+                        {isPreLoading && <ReloadIcon className="h-4 w-4 animate-spin" />}
                         Preload Cache
                       </Button>
-                      <Button onClick={handleDeleteCache} variant="destructive" disabled={isDeleting}>
-                        {isDeleting && <ReloadIcon className="mr-2 h-4 w-4 animate-spin" />}
+                      <Button onClick={handleDeleteCache} variant="destructive" disabled={isDeleting} className="gap-2">
+                        {isDeleting && <ReloadIcon className="h-4 w-4 animate-spin" />}
                         删除缓存
                       </Button>
                     </div>
@@ -234,7 +257,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
             <TableBody>
               {cacheList.map((mapItem) => (
                 <TableRow key={mapItem.url}>
-                  <TableCell>{mapItem.url.split("/").pop()}</TableCell>
+                  <TableCell className="max-w-[200px]">{mapItem.url.split("/").pop()}</TableCell>
                   <TableCell>{mapItem.duration?.toFixed(2) || 0} ms</TableCell>
                   <TableCell>{(mapItem.size / 1024).toFixed(1)} KB</TableCell>
                   <TableCell className="flex justify-end">

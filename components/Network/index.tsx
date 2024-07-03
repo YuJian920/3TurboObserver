@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { sumThroughput } from "@/lib/utils";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
+import type { SetStateAction, Dispatch } from "react";
 
 export interface NetworkConfig {
   offline: boolean;
@@ -12,15 +13,11 @@ export interface NetworkConfig {
   latency: number;
 }
 
-export interface SetConfigType {
-  (prevConfig: (prevConfig: NetworkConfig) => NetworkConfig): NetworkConfig;
-}
-
 interface NetworkProps {
   control: boolean;
   setControl: (value: boolean) => void;
   config: NetworkConfig;
-  setConfig: SetConfigType;
+  setConfig: Dispatch<SetStateAction<NetworkConfig>>;
 }
 
 export default function Network({ control, setControl, config, setConfig }: NetworkProps) {

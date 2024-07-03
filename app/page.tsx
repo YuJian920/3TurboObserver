@@ -2,7 +2,7 @@
 
 import PreloadCache from "@/components/PreloadCache";
 import Network from "@/components/Network";
-import type { NetworkConfig, SetConfigType } from "@/components/Network";
+import type { NetworkConfig } from "@/components/Network";
 import Iterations from "@/components/Iterations";
 import { useState } from "react";
 
@@ -22,7 +22,7 @@ export default function Home() {
         control={networkControl}
         setControl={setNetworkControl}
         config={networkConfig}
-        setConfig={setNetworkConfig as SetConfigType}
+        setConfig={setNetworkConfig}
       />
       <PreloadCache URL={URL} setURL={setURL} networkControl={networkControl} networkConfig={networkConfig} />
       <Iterations URL={URL} networkControl={networkControl} networkConfig={networkConfig} />
