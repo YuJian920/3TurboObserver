@@ -1,11 +1,10 @@
 "use server";
 
-import { NetworkConfig } from "@/components/Network";
-import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
-import puppeteer, { type Protocol, type ResourceType } from "puppeteer";
+import type { ResourceType } from "puppeteer";
+import Downloader from "nodejs-file-downloader";
 
 // 配置资源缓存目录
 const cacheDir = path.join(cwd(), "cache");
@@ -27,7 +26,6 @@ export interface PreloaResponseV2 {
 }
 
 interface PreloadCachePayload {
-  networkConfig?: NetworkConfig;
   resourceList: PreloaResponseV2[];
 }
 
@@ -42,44 +40,26 @@ interface PreloadCacheProps {
  */
 const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
   if (!url) return [];
-  const { networkConfig = {}, resourceList = [] } = payload;
+  const { resourceList = [] } = payload;
 
   await deleteCacheAction();
 
   const responsePayload: PreloaResponseV2[] = [];
-  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
-  const page = await browser.newPage();
-  page.setUserAgent(UserAgent);
 
-  if (Object.keys(networkConfig).length !== 0) {
-    const client = await page.target().createCDPSession();
-    await client.send("Network.emulateNetworkConditions", networkConfig as Protocol.Network.EmulateNetworkConditionsRequest);
-  }
-
-  await page.setRequestInterception(true);
-
-  page.on("request", async (request) => {
-    const url = new URL(request.url());
-    const fileName = url.pathname.split("/").pop();
-
-    if (!fileName) {
-      request.continue();
-      return;
+  const downloadRace = resourceList.map(async (item) => {
+    const { url, fileName } = item;
+    const filePath = path.join(cacheDir, fileName);
+    const downloader = new Downloader({ url, directory: cacheDir, fileName });
+    try {
+      await downloader.download();
+      const buffer = fs.readFileSync(filePath);
+      responsePayload.push({ url, fileName, size: buffer.length, isCached: true });
+    } catch (error) {
+      responsePayload.push({ url, fileName, size: 0, isCached: false });
     }
-
-    const cacheFilePath = path.join(cacheDir, fileName);
-
-    if (resourceList.some((item) => item.url === request.url())) {
-      const response = await fetch(request.url());
-      const buffer = Buffer.from(await response.arrayBuffer());
-      fs.writeFileSync(cacheFilePath, buffer);
-      responsePayload.push({ fileName, url: request.url(), size: buffer.length });
-      request.respond({ status: 200, body: buffer });
-    } else request.continue();
   });
 
-  await page.goto(url, { waitUntil: "networkidle2" });
-  await browser.close();
+  await Promise.all(downloadRace);
 
   return responsePayload;
 };

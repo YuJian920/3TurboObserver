@@ -10,14 +10,7 @@ import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, Dr
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  BarChartIcon,
-  PieChartIcon,
-  ReloadIcon,
-  CheckCircledIcon,
-  QuestionMarkCircledIcon,
-  TransformIcon,
-} from "@radix-ui/react-icons";
+import { BarChartIcon, PieChartIcon, ReloadIcon, CheckCircledIcon, QuestionMarkCircledIcon, TransformIcon } from "@radix-ui/react-icons";
 import type { ResourceType } from "puppeteer";
 import { useMemo, useState } from "react";
 import type { NetworkConfig } from "../Network";
@@ -81,7 +74,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
   const handlePreloadCache = async () => {
     try {
       setPreLoading(true);
-      const result = await preloadCacheAction(URL, { networkConfig: networkControl ? networkConfig : undefined, resourceList: cacheList });
+      const result = await preloadCacheAction(URL, { resourceList: cacheList });
 
       // 将 result 和 cacheList 进行对比，缓存成功则在 cacheList 对应的项中添加 isCached 标记
       setCacheList((prev) =>
