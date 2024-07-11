@@ -1,10 +1,10 @@
 "use server";
 
+import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
-import type { ResourceType } from "puppeteer";
-import Downloader from "nodejs-file-downloader";
+import puppeteer, { type ResourceType } from "puppeteer";
 
 // 配置资源缓存目录
 const cacheDir = path.join(cwd(), "cache");
@@ -45,21 +45,31 @@ const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
   await deleteCacheAction();
 
   const responsePayload: PreloaResponseV2[] = [];
+  const browser = await puppeteer.launch({ headless: false, args: ["--no-sandbox"] });
+  const page = await browser.newPage();
+  page.setUserAgent(UserAgent);
 
-  const downloadRace = resourceList.map(async (item) => {
-    const { url, fileName } = item;
-    const filePath = path.join(cacheDir, fileName);
-    const downloader = new Downloader({ url, directory: cacheDir, fileName });
-    try {
-      await downloader.download();
-      const buffer = fs.readFileSync(filePath);
-      responsePayload.push({ url, fileName, size: buffer.length, isCached: true });
-    } catch (error) {
-      responsePayload.push({ url, fileName, size: 0, isCached: false });
+  page.on("response", async (response) => {
+    const requestUrl = response.url();
+    const fileName = new URL(requestUrl).pathname.split("/").pop();
+
+    if (!fileName) return;
+
+    if (resourceList.some((item) => item.url === requestUrl)) {
+      const buffer = await response.buffer();
+      const cacheFilePath = path.join(cacheDir, fileName);
+      fs.writeFileSync(cacheFilePath, buffer);
+      responsePayload.push({
+        url: requestUrl,
+        fileName,
+        size: buffer.length,
+        isCached: true,
+      });
     }
   });
 
-  await Promise.all(downloadRace);
+  await page.goto(url, { waitUntil: "networkidle2" });
+  await browser.close();
 
   return responsePayload;
 };

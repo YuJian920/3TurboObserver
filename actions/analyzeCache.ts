@@ -38,18 +38,33 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   const page = await browser.newPage();
   page.setUserAgent(UserAgent);
 
+  // 切换语言
+  // await page.evaluateOnNewDocument(() => {
+  //   Object.defineProperty(navigator, "language", {
+  //     get: function () {
+  //       return "id-ID";
+  //     },
+  //   });
+  //   Object.defineProperty(navigator, "languages", {
+  //     get: function () {
+  //       return ["id-ID", "id"];
+  //     },
+  //   });
+  // });
+
   if (Object.keys(networkConfig).length !== 0) {
     const client = await page.target().createCDPSession();
     await client.send("Network.emulateNetworkConditions", networkConfig as Protocol.Network.EmulateNetworkConditionsRequest);
   }
 
-  // await page.setRequestInterception(true);
   const networkRequests = new Map();
 
+  // await page.setRequestInterception(true);
   page.on("request", async (request) => {
     const resourceType = request.resourceType();
 
     if (cacheOption.includes(resourceType)) {
+      if (request.url().startsWith("data:")) return request.continue();
       networkRequests.set(request.url(), { url: request.url(), startTime: performance.now() });
     } else request.continue();
   });

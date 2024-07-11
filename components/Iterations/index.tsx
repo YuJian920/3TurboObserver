@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Label } from "@/components/ui/label";
 import type { NetworkConfig } from "@/components/Network";
-import { ReloadIcon, InfoCircledIcon } from "@radix-ui/react-icons";
+import { ReloadIcon, InfoCircledIcon, PieChartIcon } from "@radix-ui/react-icons";
 import measureLoadTime from "@/actions/measureLoadTime";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { TimeAreaChart } from "@/components/AreaChart";
 
 interface IterationsProps {
   URL: string;
@@ -23,11 +25,45 @@ interface LoadTimeWithCache {
   loadTimeWithoutCache: number;
 }
 
+export interface ResourceLoadTime {
+  url: string;
+  withCache: number | undefined;
+  withoutCache: number | undefined;
+}
+
 export default function Iterations({ URL, networkControl, networkConfig }: IterationsProps) {
   const [iterationsWithoutCache, setIterationsWithoutCache] = useState(true);
   const [iterations, setIterations] = useState("1");
   const [isIterating, setIsIterating] = useState(false);
   const [loadTimeData, setLoadTimeData] = useState<LoadTimeWithCache[]>([]);
+  const [mergedResults, setMergedResults] = useState<ResourceLoadTime[]>([]);
+
+  const mergeLoadTimes = (
+    loadTimeWithCache: { [key: string]: number },
+    loadTimeWithoutCache: { [key: string]: number }
+  ): ResourceLoadTime[] => {
+    // 创建一个新的映射，以统一处理有缓存和无缓存的情况
+    const mergedResults: { [key: string]: ResourceLoadTime } = {};
+
+    // 遍历有缓存的加载时间
+    Object.keys(loadTimeWithCache).forEach((url) => {
+      if (!mergedResults[url]) {
+        mergedResults[url] = { url, withCache: undefined, withoutCache: undefined };
+      }
+      mergedResults[url].withCache = loadTimeWithCache[url];
+    });
+
+    // 遍历无缓存的加载时间
+    Object.keys(loadTimeWithoutCache).forEach((url) => {
+      if (!mergedResults[url]) {
+        mergedResults[url] = { url, withCache: undefined, withoutCache: undefined };
+      }
+      mergedResults[url].withoutCache = loadTimeWithoutCache[url];
+    });
+
+    // 将结果转换为数组形式
+    return Object.values(mergedResults);
+  };
 
   /**
    * 开始迭代
@@ -44,8 +80,22 @@ export default function Iterations({ URL, networkControl, networkConfig }: Itera
           iterationsWithoutCache ? measureLoadTime(URL, networkControl ? networkConfig : {}, false) : Promise.resolve(null),
         ]);
 
-        _loadTimeData.push({ index: i + 1, loadTimeWithCache, loadTimeWithoutCache: loadTimeWithoutCache ?? null } as LoadTimeWithCache);
+        const mergedResults = mergeLoadTimes(
+          loadTimeWithCache.cachedResourceLoadTimes ?? {},
+          loadTimeWithoutCache?.cachedResourceLoadTimes ?? {}
+        );
+
+        console.log("mergedResults", mergedResults);
+        console.log("loadTimeWithCache", loadTimeWithCache);
+        console.log("loadTimeWithoutCache", loadTimeWithoutCache);
+
+        _loadTimeData.push({
+          index: i + 1,
+          loadTimeWithCache: loadTimeWithCache.pageLoadTime,
+          loadTimeWithoutCache: loadTimeWithoutCache?.pageLoadTime ?? null,
+        } as LoadTimeWithCache);
         setLoadTimeData([..._loadTimeData]);
+        setMergedResults(mergedResults);
       }
     } finally {
       setIsIterating(false);
@@ -106,7 +156,8 @@ export default function Iterations({ URL, networkControl, networkConfig }: Itera
               <TableHead>迭代次数</TableHead>
               <TableHead>有缓存网络延迟</TableHead>
               <TableHead>无缓存网络延迟</TableHead>
-              <TableHead className="text-right">优化效率</TableHead>
+              <TableHead>优化效率</TableHead>
+              <TableHead className="text-right">优化图表</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -115,8 +166,30 @@ export default function Iterations({ URL, networkControl, networkConfig }: Itera
                 <TableCell>第 {mapItem.index} 次</TableCell>
                 <TableCell>{mapItem.loadTimeWithCache} ms</TableCell>
                 <TableCell>{mapItem.loadTimeWithoutCache} ms</TableCell>
-                <TableCell className="text-right">
+                <TableCell>
                   {(((mapItem.loadTimeWithoutCache - mapItem.loadTimeWithCache) / mapItem.loadTimeWithoutCache) * 100).toFixed(2)} %
+                </TableCell>
+                <TableCell className="text-right">
+                  <Drawer>
+                    <DrawerTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <PieChartIcon />
+                      </Button>
+                    </DrawerTrigger>
+                    <DrawerContent>
+                      <DrawerHeader>
+                        <div className="flex justify-between">
+                          <div>
+                            <DrawerTitle>Resource Download TreeMap</DrawerTitle>
+                            <DrawerDescription>选择需要缓存的静态资源后点击 Preload Cache 按钮即可开始缓存</DrawerDescription>
+                          </div>
+                        </div>
+                      </DrawerHeader>
+                      <div className="h-[80vh] w-full">
+                        <TimeAreaChart date={mergedResults} />
+                      </div>
+                    </DrawerContent>
+                  </Drawer>
                 </TableCell>
               </TableRow>
             ))}
