@@ -45,7 +45,7 @@ const preloadCacheAction: PreloadCacheProps = async (url, payload) => {
   await deleteCacheAction();
 
   const responsePayload: PreloaResponseV2[] = [];
-  const browser = await puppeteer.launch({ headless: false, args: ["--no-sandbox"] });
+  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
   page.setUserAgent(UserAgent);
 

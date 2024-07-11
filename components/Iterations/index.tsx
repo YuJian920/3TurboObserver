@@ -180,8 +180,8 @@ export default function Iterations({ URL, networkControl, networkConfig }: Itera
                       <DrawerHeader>
                         <div className="flex justify-between">
                           <div>
-                            <DrawerTitle>Resource Download TreeMap</DrawerTitle>
-                            <DrawerDescription>选择需要缓存的静态资源后点击 Preload Cache 按钮即可开始缓存</DrawerDescription>
+                            <DrawerTitle>Resource Optimize Charts</DrawerTitle>
+                            <DrawerDescription>用于可视化的观察各个静态资源的缓存优化情况</DrawerDescription>
                           </div>
                         </div>
                       </DrawerHeader>

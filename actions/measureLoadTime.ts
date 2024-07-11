@@ -6,66 +6,72 @@ import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import { cwd } from "node:process";
 
-// 配置资源缓存目录
 const cacheDir = path.join(cwd(), "cache");
 if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
 async function measureLoadTime(url: string, networkConfig: any, useCache: boolean) {
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
-  page.setUserAgent(UserAgent);
+  await page.setUserAgent(UserAgent);
 
-  const cachedResourceTimes: { [url: string]: [number, number?] } = {};
+  const client = await page.target().createCDPSession();
+  await client.send("Network.enable");
+  await client.send("Performance.enable");
 
   if (Object.keys(networkConfig).length !== 0) {
-    const client = await page.target().createCDPSession();
     await client.send("Network.emulateNetworkConditions", networkConfig);
   }
 
+  const cachedResourceTimes: { [url: string]: { startTime?: number; endTime?: number } } = {};
+
   await page.setRequestInterception(true);
   page.on("request", async (request) => {
-    const url = new URL(request.url());
-    const fileName = url.pathname.split("/").pop();
+    const requestUrl = new URL(request.url());
+    const fileName = requestUrl.pathname.split("/").pop();
     const cacheFilePath = path.join(cacheDir, fileName ?? "");
 
     if (fileName && fs.existsSync(cacheFilePath)) {
       if (useCache) {
         const fileContent = fs.readFileSync(cacheFilePath);
-        request.respond({ status: 200, body: fileContent });
-      } else request.continue();
-      cachedResourceTimes[request.url()] = [performance.now()];
-    } else request.continue();
-  });
-
-  page.on("response", (response) => {
-    const times = cachedResourceTimes[response.url()];
-    if (times) {
-      times[1] = performance.now();
+        await request.respond({ status: 200, body: fileContent });
+      } else {
+        await request.continue();
+      }
+      const metrics = await client.send("Performance.getMetrics");
+      cachedResourceTimes[request.url()] = { startTime: metrics.metrics.find((m) => m.name === "Timestamp")!.value * 1000 };
+    } else {
+      await request.continue();
     }
   });
 
-  // 访问页面并等待网络空闲
+  client.on("Network.loadingFinished", async (event) => {
+    const metrics = await client.send("Performance.getMetrics");
+    const timestamp = metrics.metrics.find((m) => m.name === "Timestamp")!.value * 1000;
+
+    const requestUrl = Object.keys(cachedResourceTimes).find(
+      (url) => cachedResourceTimes[url].startTime && !cachedResourceTimes[url].endTime
+    );
+
+    if (requestUrl) {
+      cachedResourceTimes[requestUrl].endTime = timestamp;
+    }
+  });
+
+  const navigationStart = await page.evaluate(() => performance.timeOrigin);
   await page.goto(url, { waitUntil: "networkidle2" });
 
-  // 使用 Performance API 获取页面加载时间
-  const metrics = await page.evaluate(() =>
-    JSON.stringify({
-      navigationStart: performance.timing.navigationStart,
-      loadEventEnd: performance.timing.loadEventEnd,
-    })
-  );
+  const loadEventEnd = await page.evaluate(() => performance.timing.loadEventEnd);
 
   await browser.close();
 
-  // 计算缓存资源的加载时间
   const loadTimes: { [key: string]: number } = {};
-  Object.keys(cachedResourceTimes).forEach((url) => {
-    const times = cachedResourceTimes[url];
-    if (times && times[1]) loadTimes[url] = times[1] - times[0];
+  Object.entries(cachedResourceTimes).forEach(([url, times]) => {
+    if (times.startTime && times.endTime) {
+      loadTimes[url] = times.endTime - times.startTime;
+    }
   });
 
-  const timings = JSON.parse(metrics);
-  const pageLoadTime = timings.loadEventEnd - timings.navigationStart;
+  const pageLoadTime = loadEventEnd - navigationStart;
 
   return {
     pageLoadTime,
