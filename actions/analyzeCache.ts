@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
 import puppeteer, { Protocol, type ResourceType } from "puppeteer";
+import PuppeteerHar from "puppeteer-har";
 
 // 配置资源缓存目录
 const cacheDir = path.join(cwd(), "cache");
@@ -19,6 +20,7 @@ export interface AnalyzeResponse {
   endTime: number;
   duration: number;
   size: number;
+  gzipSize?: number;
 }
 
 interface AnalyzeCacheProps {
@@ -52,8 +54,8 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   //   });
   // });
 
+  const client = await page.target().createCDPSession();
   if (Object.keys(networkConfig).length !== 0) {
-    const client = await page.target().createCDPSession();
     await client.send("Network.emulateNetworkConditions", networkConfig as Protocol.Network.EmulateNetworkConditionsRequest);
   }
 
@@ -81,14 +83,21 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
     }
   });
 
-  page.on("requestfinished", (request) => {
+  page.on("requestfinished", async (request) => {
     const requestDetails = networkRequests.get(request.url());
 
     if (requestDetails) {
       requestDetails.endTime = performance.now();
       requestDetails.duration = requestDetails.endTime - requestDetails.startTime;
+
+      const response = await request.response();
+      const headers = response?.headers() || {};
+      if (headers["content-encoding"] === "gzip") requestDetails.gzipSize = +headers["content-length"];
     }
   });
+
+  const har = new PuppeteerHar(page);
+  await har.start({ path: path.join(cacheDir, "cache.har") });
 
   await page.goto(url, { waitUntil: "networkidle2" });
   const earliestStartTime = Math.min(...Array.from(networkRequests.values()).map((req) => req.startTime));
@@ -102,7 +111,9 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
     };
   });
 
+  await har.stop();
   await browser.close();
+
   return requestDetailsArray;
 };
 
