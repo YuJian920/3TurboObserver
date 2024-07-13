@@ -52,9 +52,7 @@ async function measureLoadTime(url: string, networkConfig: any, useCache: boolea
       (url) => cachedResourceTimes[url].startTime && !cachedResourceTimes[url].endTime
     );
 
-    if (requestUrl) {
-      cachedResourceTimes[requestUrl].endTime = timestamp;
-    }
+    if (requestUrl) cachedResourceTimes[requestUrl].endTime = timestamp;
   });
 
   const navigationStart = await page.evaluate(() => performance.timeOrigin);
@@ -66,9 +64,7 @@ async function measureLoadTime(url: string, networkConfig: any, useCache: boolea
 
   const loadTimes: { [key: string]: number } = {};
   Object.entries(cachedResourceTimes).forEach(([url, times]) => {
-    if (times.startTime && times.endTime) {
-      loadTimes[url] = times.endTime - times.startTime;
-    }
+    if (times.startTime && times.endTime) loadTimes[url] = times.endTime - times.startTime;
   });
 
   const pageLoadTime = loadEventEnd - navigationStart;

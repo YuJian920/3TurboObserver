@@ -5,10 +5,8 @@ import { UserAgent } from "@/lib/utils";
 import fs from "node:fs";
 import path from "node:path";
 import { cwd } from "node:process";
-import puppeteer, { Protocol, type ResourceType } from "puppeteer";
-import PuppeteerHar from "puppeteer-har";
+import puppeteer, { type Protocol } from "puppeteer";
 
-// 配置资源缓存目录
 const cacheDir = path.join(cwd(), "cache");
 if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
@@ -20,25 +18,19 @@ export interface AnalyzeResponse {
   endTime: number;
   duration: number;
   size: number;
-  gzipSize?: number;
 }
 
 interface AnalyzeCacheProps {
-  (url: string, payload: { cacheOption: ResourceType[]; networkConfig?: NetworkConfig }): Promise<AnalyzeResponse[]>;
+  (url: string, payload: { cacheOption: Protocol.Network.ResourceType[]; networkConfig?: NetworkConfig }): Promise<AnalyzeResponse[]>;
 }
 
-/**
- * 预加载缓存
- * @param url 预加载的 URL
- * @param payload 预加载的配置
- */
 const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   if (!url) return [];
   const { cacheOption, networkConfig = {} } = payload;
 
-  const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
+  const browser = await puppeteer.launch({ headless: false, args: ["--no-sandbox"] });
   const page = await browser.newPage();
-  page.setUserAgent(UserAgent);
+  await page.setUserAgent(UserAgent);
 
   // 切换语言
   // await page.evaluateOnNewDocument(() => {
@@ -55,66 +47,59 @@ const analyzeCache: AnalyzeCacheProps = async (url, payload) => {
   // });
 
   const client = await page.target().createCDPSession();
+  await client.send("Network.enable");
+  await client.send("Performance.enable");
+
   if (Object.keys(networkConfig).length !== 0) {
     await client.send("Network.emulateNetworkConditions", networkConfig as Protocol.Network.EmulateNetworkConditionsRequest);
   }
 
   const networkRequests = new Map();
 
-  // await page.setRequestInterception(true);
-  page.on("request", async (request) => {
-    const resourceType = request.resourceType();
-
-    if (cacheOption.includes(resourceType)) {
-      if (request.url().startsWith("data:")) return request.continue();
-      networkRequests.set(request.url(), { url: request.url(), startTime: performance.now() });
-    } else request.continue();
+  client.on("Network.requestWillBeSent", async (event) => {
+    if (event.type && cacheOption.includes(event.type)) {
+      if (event.request.url.startsWith("data:")) return;
+      const metrics = await client.send("Performance.getMetrics");
+      const startTime = metrics.metrics.find((m) => m.name === "Timestamp")!.value * 1000;
+      networkRequests.set(event.requestId, { url: event.request.url, startTime });
+    }
   });
 
-  page.on("response", async (response) => {
-    const request = networkRequests.get(response.url());
-    const responseTiming = response.timing();
-
+  client.on("Network.responseReceived", async (event) => {
+    const request = networkRequests.get(event.requestId);
     if (request) {
-      const buffer = await response.buffer();
-      request.size = buffer.length; // 添加资源大小
-      request.responseTiming = responseTiming;
-      request.responseReceived = performance.now();
+      const metrics = await client.send("Performance.getMetrics");
+      const responseReceived = metrics.metrics.find((m) => m.name === "Timestamp")!.value * 1000;
+      request.responseReceived = responseReceived;
+      request.responseTiming = event.response.timing;
     }
   });
 
-  page.on("requestfinished", async (request) => {
-    const requestDetails = networkRequests.get(request.url());
-
-    if (requestDetails) {
-      requestDetails.endTime = performance.now();
-      requestDetails.duration = requestDetails.endTime - requestDetails.startTime;
-
-      const response = await request.response();
-      const headers = response?.headers() || {};
-      if (headers["content-encoding"] === "gzip") requestDetails.gzipSize = +headers["content-length"];
+  client.on("Network.loadingFinished", async (event) => {
+    const request = networkRequests.get(event.requestId);
+    if (request) {
+      const metrics = await client.send("Performance.getMetrics");
+      const endTime = metrics.metrics.find((m) => m.name === "Timestamp")!.value * 1000;
+      request.endTime = endTime;
+      request.duration = request.endTime - request.startTime;
+      request.size = event.encodedDataLength;
     }
   });
-
-  const har = new PuppeteerHar(page);
-  await har.start({ path: path.join(cacheDir, "cache.har") });
 
   await page.goto(url, { waitUntil: "networkidle2" });
-  const earliestStartTime = Math.min(...Array.from(networkRequests.values()).map((req) => req.startTime));
 
-  const requestDetailsArray = Array.from(networkRequests.values()).map((req) => {
-    return {
-      ...req,
-      startTime: req.startTime - earliestStartTime,
-      responseReceived: req.responseReceived - earliestStartTime,
-      endTime: req.endTime - earliestStartTime,
-    };
-  });
+  const requestDetailsArray = Array.from(networkRequests.values());
+  const earliestStartTime = Math.min(...requestDetailsArray.map((req) => req.startTime));
 
-  await har.stop();
+  const normalizedRequestDetails = requestDetailsArray.map((req) => ({
+    ...req,
+    startTime: req.startTime - earliestStartTime,
+    responseReceived: req.responseReceived - earliestStartTime,
+    endTime: req.endTime - earliestStartTime,
+  }));
+
   await browser.close();
-
-  return requestDetailsArray;
+  return normalizedRequestDetails;
 };
 
 export default analyzeCache;

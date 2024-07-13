@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChartIcon, PieChartIcon, ReloadIcon, CheckCircledIcon, QuestionMarkCircledIcon, TransformIcon } from "@radix-ui/react-icons";
-import type { ResourceType } from "puppeteer";
+import type { Protocol } from "puppeteer";
 import { useMemo, useState } from "react";
 import type { NetworkConfig } from "../Network";
 
@@ -23,30 +23,30 @@ interface PreloadCacheProps {
 }
 
 export default function PreloadCache({ URL, setURL, networkControl, networkConfig }: PreloadCacheProps) {
-  const [cacheOption, setCacheOption] = useState<ResourceType[]>(["script", "stylesheet", "image", "font"]);
+  const [cacheOption, setCacheOption] = useState<Protocol.Network.ResourceType[]>(["Script", "Stylesheet", "Image", "Font"]);
   const [isPreLoading, setPreLoading] = useState(false);
   const [isAnalyzeLoading, setAnalyzeLoading] = useState(false);
   const [isDeleting, setDeleting] = useState(false);
   const [cacheList, setCacheList] = useState<PreloaResponseV2[]>([]);
   const [analyzeList, setAnalyzeList] = useState<AnalyzeResponse[]>([]);
 
-  const preloadOptions = useMemo<{ name: string; key: ResourceType }[]>(
+  const preloadOptions = useMemo<{ name: string; key: Protocol.Network.ResourceType }[]>(
     () => [
       {
         name: "缓存 JavaScript",
-        key: "script",
+        key: "Script",
       },
       {
         name: "缓存 CSS",
-        key: "stylesheet",
+        key: "Stylesheet",
       },
       {
         name: "缓存图片",
-        key: "image",
+        key: "Image",
       },
       {
         name: "缓存字体",
-        key: "font",
+        key: "Font",
       },
     ],
     []
@@ -96,6 +96,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
     try {
       setAnalyzeLoading(true);
       const result = await analyzeCache(URL, { cacheOption, networkConfig: networkControl ? networkConfig : undefined });
+      console.log("Analyze Cache Result: ", result);
       setAnalyzeList(result);
     } finally {
       setAnalyzeLoading(false);
@@ -120,7 +121,7 @@ export default function PreloadCache({ URL, setURL, networkControl, networkConfi
    * @param value
    * @param key
    */
-  const handleCacheOptionChange = (value: boolean, key: ResourceType) => {
+  const handleCacheOptionChange = (value: boolean, key: Protocol.Network.ResourceType) => {
     if (value) setCacheOption([...cacheOption, key]);
     else setCacheOption(cacheOption.filter((item) => item !== key));
   };
