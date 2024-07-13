@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import type { AnalyzeResponse } from "@/actions/analyzeCache";
 import type { PreloaResponseV2 } from "@/actions/preloadCache";
+import { formatSize } from "@/lib/utils";
 
 interface TimelineChartProps {
   data: AnalyzeResponse[];
@@ -186,7 +187,6 @@ const TimelineChart = ({ data, handleClick, selected }: TimelineChartProps) => {
               width={dimensions.width - margin.left - margin.right}
               height={barHeight}
               fill="#f3f4f6"
-              // opacity={hoveredResource === item ? 0.5 : 0}
               opacity={selected?.some((someItem) => someItem.url === item.url) ? 0.9 : hoveredResource === item ? 0.5 : 0}
             />
             <rect
@@ -232,44 +232,26 @@ const TimelineChart = ({ data, handleClick, selected }: TimelineChartProps) => {
             overflowY: "auto",
           }}
         >
-          <div>
-            <strong>URL:</strong> <span className="break-all">{hoveredResource.url}</span>
+          <div className="flex gap-1">
+            <strong>URL:</strong>
+            <span className="break-all">{hoveredResource.url}</span>
           </div>
-          <p>
-            <strong>Start Time:</strong> {formatTime(safeTimeDiff(hoveredResource.startTime - minStartTime, 0))}
-          </p>
-          <p>
-            <strong>End Time:</strong> {formatTime(safeTimeDiff(hoveredResource.endTime - minStartTime, 0))}
-          </p>
-          <p>
-            <strong>Duration:</strong> {formatTime(safeTimeDiff(hoveredResource.duration, 0))}
-          </p>
-          <p>
-            <strong>Response Received:</strong> {formatTime(safeTimeDiff(hoveredResource.responseReceived - minStartTime, 0))}
-          </p>
-          <p>
-            <strong>DNS Lookup:</strong>
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.dnsEnd, hoveredResource.responseTiming?.dnsStart))}
-          </p>
-          <p>
-            <strong>Initial Connection:</strong>
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.connectEnd, hoveredResource.responseTiming?.connectStart))}
-          </p>
-          <p>
-            <strong>SSL:</strong>{" "}
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.sslEnd, hoveredResource.responseTiming?.sslStart))}
-          </p>
-          <p>
-            <strong>Request Sent:</strong>
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.sendEnd, hoveredResource.responseTiming?.sendStart))}
-          </p>
-          <p>
-            <strong>Waiting (TTFB):</strong>
-            {formatTime(safeTimeDiff(hoveredResource.responseTiming?.receiveHeadersEnd, hoveredResource.responseTiming?.sendEnd))}
-          </p>
-          <p>
-            <strong>Content Download:</strong> {formatTime(safeTimeDiff(0, hoveredResource.endTime - hoveredResource.responseReceived))}
-          </p>
+          <div className="flex gap-1">
+            <strong>Size:</strong>
+            {formatSize(hoveredResource.size)}
+          </div>
+          <div className="flex gap-1">
+            <strong>Duration:</strong>
+            {formatTime(safeTimeDiff(hoveredResource.duration, 0))}
+          </div>
+          <div className="flex gap-1">
+            <strong>Start Time:</strong>
+            {formatTime(safeTimeDiff(hoveredResource.startTime - minStartTime, 0))}
+          </div>
+          <div className="flex gap-1">
+            <strong>End Time:</strong>
+            {formatTime(safeTimeDiff(hoveredResource.endTime - minStartTime, 0))}
+          </div>
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { ResponsiveContainer, Treemap, Tooltip } from "recharts";
 import { scaleSequential } from "d3-scale";
 import { interpolateViridis } from "d3-scale-chromatic";
 import { AnalyzeResponse } from "@/actions/analyzeCache";
+import { formatSize } from "@/lib/utils";
 
 // Custom content component for Treemap with additional checks
 const CustomContent = (props: any) => {
@@ -55,13 +56,6 @@ const TreeMap = ({ data }: TreeMapProps) => {
       </div>
     );
   }
-
-  const formatSize = (size: any) => {
-    if (typeof size !== "number" || isNaN(size)) return "Unknown";
-    if (size < 1024) return `${size.toFixed(2)} B`;
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(2)} KB`;
-    return `${(size / (1024 * 1024)).toFixed(2)} MB`;
-  };
 
   const formatTime = (time: any) => {
     if (typeof time !== "number" || isNaN(time)) return "Unknown";

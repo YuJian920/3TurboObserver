@@ -9,7 +9,7 @@ import { cwd } from "node:process";
 const cacheDir = path.join(cwd(), "cache");
 if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir);
 
-async function measureLoadTime(url: string, networkConfig: any, useCache: boolean) {
+const measureLoadTimeAction = async (url: string, networkConfig: any, useCache: boolean) => {
   const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox"] });
   const page = await browser.newPage();
   await page.setUserAgent(UserAgent);
@@ -75,4 +75,4 @@ async function measureLoadTime(url: string, networkConfig: any, useCache: boolea
   };
 }
 
-export default measureLoadTime;
+export default measureLoadTimeAction;
