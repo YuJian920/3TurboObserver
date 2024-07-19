@@ -55,10 +55,9 @@ const measureLoadTimeAction = async (url: string, networkConfig: any, useCache: 
     if (requestUrl) cachedResourceTimes[requestUrl].endTime = timestamp;
   });
 
-  const navigationStart = await page.evaluate(() => performance.timeOrigin);
+  const startTime = await page.evaluate(() => performance.now());
   await page.goto(url, { waitUntil: "networkidle2" });
-
-  const loadEventEnd = await page.evaluate(() => performance.timing.loadEventEnd);
+  const endTime = await page.evaluate(() => performance.now());
 
   await browser.close();
 
@@ -67,10 +66,10 @@ const measureLoadTimeAction = async (url: string, networkConfig: any, useCache: 
     if (times.startTime && times.endTime) loadTimes[url] = times.endTime - times.startTime;
   });
 
-  const pageLoadTime = loadEventEnd - navigationStart;
+  const pageLoadTime = endTime - startTime;
 
   return {
-    pageLoadTime,
+    pageLoadTime: pageLoadTime.toFixed(2),
     cachedResourceLoadTimes: loadTimes,
   };
 }
